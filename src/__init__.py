@@ -1,0 +1,1 @@
+"""Auth service source package."""
