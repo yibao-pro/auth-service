@@ -7,19 +7,15 @@
 ```text
 auth-service/
 ├── api/
-│   └── app.py
-├── src/
-│   ├── auth_jwt.py
-│   ├── db.py
-│   ├── errors.py
-│   ├── logging.py
-│   ├── repo.py
-│   ├── routes.py
-│   ├── schemas.py
-│   ├── service.py
-│   └── settings.py
-├── test/
+├── scripts/
 ├── requirements.txt
+├── main.py
+├── Dockerfile
+├── docker-compose.yml
+├── .env.example
+├── .workflow/
+├── src/
+├── database/
 └── README.md
 ```
 
@@ -31,14 +27,20 @@ pip install -r requirements.txt
 
 ## 环境变量
 
-服务默认直接连接独立的认证数据库，不依赖 `yibao-pro` 的 `.env`：
+服务默认不依赖 `yibao-pro`，并且优先通过 `DATABASE_URL` 连接数据库：
+
+```bash
+export DATABASE_URL=postgresql://yibao_user:123456@localhost:5432/yibao_auth
+```
+
+如果不提供 `DATABASE_URL`，才会回退到以下拆分参数：
 
 ```bash
 export VOICE_APP_POSTGRES_HOST=localhost
 export VOICE_APP_POSTGRES_PORT=5432
 export VOICE_APP_POSTGRES_USER=yibao_user
 export VOICE_APP_POSTGRES_PASSWORD=123456
-export VOICE_APP_POSTGRES_DB=yibao-auth
+export VOICE_APP_POSTGRES_DB=yibao_auth
 ```
 
 JWT 配置：
@@ -62,6 +64,27 @@ export VOICE_APP_AUTH_SERVICE_PORT=8004
 ```bash
 uvicorn api.app:app --host 0.0.0.0 --port 8004
 ```
+
+## Docker
+
+不把 PostgreSQL 装进 `auth-service` 镜像。
+
+- `auth-service` 是一个容器
+- `postgres` 是另一个容器
+- `docker-compose` 负责网络和环境变量注入
+- `auth-service` 通过 `DATABASE_URL` 连接 `postgres`
+
+使用方式：
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+默认暴露：
+
+- `auth-service`: `8004`
+- `postgres`: `5432`
 
 ## 接口
 

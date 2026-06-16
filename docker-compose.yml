@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: auth-service-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-yibao_auth}
+      POSTGRES_USER: ${POSTGRES_USER:-yibao_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - auth-service-postgres-data:/var/lib/postgresql/data
+      - ./database/auth_postgres.sql:/docker-entrypoint-initdb.d/01-auth_postgres.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-yibao_user} -d ${POSTGRES_DB:-yibao_auth}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: auth-service-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AUTH_SERVICE_HOST: 0.0.0.0
+      AUTH_SERVICE_PORT: 8004
+      DATABASE_URL: postgresql://${POSTGRES_USER:-yibao_user}:${POSTGRES_PASSWORD:-123456}@postgres:5432/${POSTGRES_DB:-yibao_auth}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-secret-change-me}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-60}
+      INIT_DB_ON_START: ${INIT_DB_ON_START:-true}
+    ports:
+      - "${AUTH_SERVICE_PORT:-8004}:8004"
+
+volumes:
+  auth-service-postgres-data:

@@ -29,7 +29,7 @@ def _connect_target() -> psycopg.Connection:
         port=int(_env("VOICE_APP_POSTGRES_PORT", "5432")),
         user=_env("VOICE_APP_POSTGRES_USER", "yibao_user"),
         password=_env("VOICE_APP_POSTGRES_PASSWORD", "123456"),
-        dbname=_env("VOICE_APP_POSTGRES_DB", "yibao-auth"),
+        dbname=_env("VOICE_APP_POSTGRES_DB", "yibao_auth"),
         autocommit=True,
     )
 
@@ -37,7 +37,7 @@ def _connect_target() -> psycopg.Connection:
 def _ensure_role_and_db() -> None:
     role_name = _env("VOICE_APP_POSTGRES_USER", "yibao_user")
     role_password = _env("VOICE_APP_POSTGRES_PASSWORD", "123456")
-    db_name = _env("VOICE_APP_POSTGRES_DB", "yibao-auth")
+    db_name = _env("VOICE_APP_POSTGRES_DB", "yibao_auth")
 
     try:
         with _connect_admin() as conn:

@@ -2,80 +2,52 @@ version: '1.0'
 name: branch-pipeline
 displayName: BranchPipeline
 stages:
-  - stage: 
+  - stage:
     name: compile
     displayName: 编译
     steps:
       - step: build@python
         name: build_python
-        displayName: Python 构建
+        displayName: Docker Compose 构建与测试
         pythonVersion: '3.10'
-        # 非必填字段，开启后表示将构建产物暂存，但不会上传到制品库中，7天后自动清除
         artifacts:
-            # 构建产物名字，作为产物的唯一标识可向下传递，支持自定义，默认为BUILD_ARTIFACT。在下游可以通过${BUILD_ARTIFACT}方式引用来获取构建物地址
           - name: BUILD_ARTIFACT
-            # 构建产物获取路径，是指代码编译完毕之后构建物的所在路径
             path:
               - ./
         commands:
           - python3 --version
-          - python3 -m pip install --upgrade pip
-          - pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
-          - python3 -m pip install -r requirements.txt
           - python3 -m py_compile main.py api/app.py src/*.py scripts/*.py
           - |
               set -euo pipefail
-              export PYTHONPATH=.
-              export AUTH_SERVICE_HOST=127.0.0.1
+              cp .env.example .env
               export AUTH_SERVICE_TEST_HOST=127.0.0.1
               export AUTH_SERVICE_PORT=8004
-              export VOICE_APP_AUTH_SERVICE_PORT=8004
-              export CI_POSTGRES_HOST=127.0.0.1
-              export CI_POSTGRES_PORT=5432
-              export CI_POSTGRES_ADMIN_DB=postgres
-              export VOICE_APP_POSTGRES_HOST=127.0.0.1
-              export VOICE_APP_POSTGRES_PORT=5432
-              export VOICE_APP_POSTGRES_DB=yibao-auth
-              export VOICE_APP_POSTGRES_USER=yibao_user
-              export VOICE_APP_POSTGRES_PASSWORD=123456
 
-              if command -v sudo >/dev/null 2>&1; then
-                sudo service postgresql start || sudo systemctl start postgresql || sudo pg_ctlcluster 14 main start || true
-              else
-                service postgresql start || systemctl start postgresql || pg_ctlcluster 14 main start || true
-              fi
-
-              python3 scripts/init_ci_db.py
-              python3 main.py
-
-              python3 -m uvicorn api.app:app --host 127.0.0.1 --port 8004 >/tmp/auth-service-ci.log 2>&1 &
-              AUTH_SERVICE_PID=$!
-              trap 'kill ${AUTH_SERVICE_PID} 2>/dev/null || true' EXIT
+              docker compose config
+              docker compose down -v --remove-orphans || true
+              trap 'docker compose down -v --remove-orphans || true' EXIT
+              docker compose build
+              docker compose up -d
 
               if ! python3 scripts/ci_smoke_test.py; then
-                cat /tmp/auth-service-ci.log || true
+                docker compose logs auth-service postgres || true
                 exit 1
               fi
       - step: publish@general_artifacts
         name: publish_general_artifacts
         displayName: 上传制品
-        # 上游构建任务定义的产物名，默认BUILD_ARTIFACT
         dependArtifact: BUILD_ARTIFACT
-        # 上传到制品库时的制品命名，默认output
         artifactName: output
         dependsOn: build_python
-  - stage: 
+  - stage:
     name: release
     displayName: 发布
     steps:
       - step: publish@release_artifacts
         name: publish_release_artifacts
-        displayName: '发布'
-        # 上游上传制品任务的产出
+        displayName: 发布
         dependArtifact: output
-        # 发布制品版本号
         version: '1.0.0.0'
-        # 是否开启版本号自增，默认开启
         autoIncrement: true
 triggers:
   push:

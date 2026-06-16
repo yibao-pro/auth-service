@@ -11,6 +11,12 @@ IntegrityError = psycopg.IntegrityError
 
 
 def get_conn(include_db: bool = True) -> psycopg.Connection:
+    if include_db and settings.database_url:
+        return psycopg.connect(
+            settings.database_url,
+            autocommit=True,
+            row_factory=dict_row,
+        )
     database: Optional[str] = settings.postgres_db if include_db else settings.postgres_admin_db
     return psycopg.connect(
         host=settings.postgres_host,
