@@ -71,6 +71,16 @@ jobs:
             mkdir -p "${DEPLOY_DIR}"
             cd "${DEPLOY_DIR}"
 
+            echo "Inspect env files..."
+            find /data/yibao-agent-platform -maxdepth 5 \( -name ".env" -o -name ".env.example" \) -print || true
+            ls -la "${DEPLOY_DIR}" || true
+
+            if [ ! -f "${ENV_FILE}" ]; then
+              echo "Missing env file: ${ENV_FILE}"
+              echo "Create it on the server from .env.example and fill real values before rerunning deploy."
+              exit 1
+            fi
+
             echo "Pull latest image..."
             docker pull "${IMAGE}"
 
