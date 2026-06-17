@@ -7,13 +7,16 @@ on:
   workflow_dispatch:
 
 env:
-  REGISTRY: crpi-cov44u3tj8fodq9j.cn-hangzhou.personal.cr.aliyuncs.com
-  IMAGE_REPOSITORY: yibao-pro/auth-service
+  REGISTRY: ghcr.io
+  IMAGE_REPOSITORY: 2019598399/auth-service
   IMAGE_TAG: latest
 
 jobs:
   docker-image:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout repository
@@ -22,12 +25,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Alibaba Cloud ACR
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_PASSWORD }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push auth-service image
         uses: docker/build-push-action@v6
