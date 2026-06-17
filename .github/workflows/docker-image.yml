@@ -76,9 +76,15 @@ jobs:
             ls -la "${DEPLOY_DIR}" || true
 
             if [ ! -f "${ENV_FILE}" ]; then
-              echo "Missing env file: ${ENV_FILE}"
-              echo "Create it on the server from .env.example and fill real values before rerunning deploy."
-              exit 1
+              if [ -f "${DEPLOY_DIR}/.env.example" ]; then
+                echo "Missing env file: ${ENV_FILE}"
+                echo "Bootstrap ${ENV_FILE} from .env.example"
+                cp "${DEPLOY_DIR}/.env.example" "${ENV_FILE}"
+              else
+                echo "Missing env file: ${ENV_FILE}"
+                echo "Missing template file: ${DEPLOY_DIR}/.env.example"
+                exit 1
+              fi
             fi
 
             echo "Pull latest image..."
