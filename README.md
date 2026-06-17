@@ -7,13 +7,13 @@
 ```text
 auth-service/
 ├── api/
+├── .github/workflows/
 ├── scripts/
 ├── requirements.txt
 ├── main.py
 ├── Dockerfile
 ├── docker-compose.yml
 ├── .env.example
-├── .workflow/
 ├── src/
 ├── database/
 └── README.md
@@ -65,6 +65,12 @@ export AUTH_SERVICE_PORT=8004
 uvicorn api.app:app --host 0.0.0.0 --port 8004
 ```
 
+或使用启动脚本：
+
+```bash
+./scripts/start_auth_service.sh
+```
+
 ## Docker
 
 不把 PostgreSQL 装进 `auth-service` 镜像。
@@ -78,13 +84,69 @@ uvicorn api.app:app --host 0.0.0.0 --port 8004
 
 ```bash
 cp .env.example .env
-docker compose up --build
+docker compose up -d --build
 ```
 
 默认暴露：
 
 - `auth-service`: `8004`
 - `postgres`: `5432`
+
+## 镜像
+
+GitHub Actions 会构建并推送镜像到：
+
+```text
+ghcr.io/yibao-pro/auth-service:latest
+```
+
+手动拉取示例：
+
+```bash
+docker pull ghcr.io/yibao-pro/auth-service:latest
+```
+
+单独运行容器时，服务默认监听容器内 `8004` 端口：
+
+```bash
+docker run -d \
+  --name auth-service \
+  --env-file .env \
+  -p 8004:8004 \
+  ghcr.io/yibao-pro/auth-service:latest
+```
+
+如果部署环境希望服务监听 `8030`，可以覆盖端口环境变量：
+
+```bash
+docker run -d \
+  --name auth-service \
+  --env-file .env \
+  -e AUTH_SERVICE_PORT=8030 \
+  -p 8030:8030 \
+  ghcr.io/yibao-pro/auth-service:latest
+```
+
+## GitHub Actions
+
+仓库使用 GitHub Actions 工作流 [docker-image.yml](./.github/workflows/docker-image.yml)：
+
+- `docker-image`：构建并推送 `ghcr.io/yibao-pro/auth-service:latest`
+- `deploy`：通过 SSH 登录服务器，先启动 candidate 容器做健康检查，再替换正式容器
+
+部署任务依赖以下 GitHub Secrets：
+
+- `SERVER_HOST`
+- `SERVER_USER`
+- `SERVER_SSH_KEY`
+
+服务器部署脚本约定：
+
+- 部署目录：`/data/yibao-agent-platform/auth-service`
+- 环境文件：`/data/yibao-agent-platform/auth-service/.env`
+- 正式容器名：`yibao-auth-service`
+- 候选容器名：`yibao-auth-service-candidate`
+- 生产端口：`8030`
 
 ## 接口
 
