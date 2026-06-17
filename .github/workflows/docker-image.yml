@@ -40,3 +40,70 @@ jobs:
           push: true
           platforms: linux/amd64
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_REPOSITORY }}:${{ env.IMAGE_TAG }}
+
+  deploy:
+    needs: docker-image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy auth-service to server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            set -e
+
+            DEPLOY_DIR=/data/yibao-agent-platform/auth-service
+            IMAGE=ghcr.io/yibao-pro/auth-service:latest
+            PROD_NAME=yibao-auth-service
+            TEST_NAME=yibao-auth-service-candidate
+            ENV_FILE=${DEPLOY_DIR}/.env
+
+            mkdir -p "${DEPLOY_DIR}"
+            cd "${DEPLOY_DIR}"
+
+            echo "Pull latest image..."
+            docker pull "${IMAGE}"
+
+            echo "Remove old candidate container..."
+            docker stop "${TEST_NAME}" || true
+            docker rm "${TEST_NAME}" || true
+
+            echo "Start candidate container..."
+            docker run -d \
+              --name "${TEST_NAME}" \
+              --env-file "${ENV_FILE}" \
+              -e INIT_DB_ON_START=false \
+              -e AUTH_SERVICE_PORT=8030 \
+              -p 18030:8030 \
+              "${IMAGE}"
+
+            echo "Wait for service..."
+            sleep 5
+
+            echo "Health check..."
+            curl -f http://127.0.0.1:18030/healthz
+
+            echo "Candidate passed. Replace production container..."
+            docker stop "${TEST_NAME}"
+            docker rm "${TEST_NAME}"
+
+            docker stop "${PROD_NAME}" || true
+            docker rm "${PROD_NAME}" || true
+
+            docker run -d \
+              --name "${PROD_NAME}" \
+              --restart unless-stopped \
+              --env-file "${ENV_FILE}" \
+              -e INIT_DB_ON_START=false \
+              -e AUTH_SERVICE_PORT=8030 \
+              -p 8030:8030 \
+              "${IMAGE}"
+
+            echo "Check production..."
+            sleep 5
+            curl -f http://127.0.0.1:8030/healthz
+
+            echo "Deploy success."
