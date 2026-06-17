@@ -12,16 +12,17 @@ stages:
     displayName: 镜像构建
     strategy: naturally
     trigger: auto
-    executor: []
+    executor:
+      - jiangfengjiang666
     steps:
       - step: build@docker
         name: build_docker
-        displayName: 镜像构建
+        displayName: 构建并推送auth-service镜像
         type: account
         repository: crpi-cov44u3tj8fodq9j.cn-hangzhou.personal.cr.aliyuncs.com
         username: aliyun8628006919
         password: 143612Ab!
-        tag: ${GITEE_PIPELINE_BUILD_NUMBER}
+        tag: yibao-pro/auth-service:${GITEE_PIPELINE_BUILD_NUMBER}
         dockerfile: ./Dockerfile
         context: .
         artifacts: []
