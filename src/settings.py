@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = Field(default=60, env="JWT_EXPIRE_MINUTES")
 
     class Config:
-        env_prefix = "VOICE_APP_"
+        env_prefix = ""
         case_sensitive = False
 
 

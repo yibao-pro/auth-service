@@ -36,25 +36,25 @@ export DATABASE_URL=postgresql://yibao_user:123456@localhost:5432/yibao_auth
 如果不提供 `DATABASE_URL`，才会回退到以下拆分参数：
 
 ```bash
-export VOICE_APP_POSTGRES_HOST=localhost
-export VOICE_APP_POSTGRES_PORT=5432
-export VOICE_APP_POSTGRES_USER=yibao_user
-export VOICE_APP_POSTGRES_PASSWORD=123456
-export VOICE_APP_POSTGRES_DB=yibao_auth
+export POSTGRES_HOST=localhost
+export POSTGRES_PORT=5432
+export POSTGRES_USER=yibao_user
+export POSTGRES_PASSWORD=123456
+export POSTGRES_DB=yibao_auth
 ```
 
 JWT 配置：
 
 ```bash
-export VOICE_APP_JWT_SECRET_KEY=dev-secret-change-me
-export VOICE_APP_JWT_ALGORITHM=HS256
-export VOICE_APP_JWT_EXPIRE_MINUTES=60
+export JWT_SECRET_KEY=dev-secret-change-me
+export JWT_ALGORITHM=HS256
+export JWT_EXPIRE_MINUTES=60
 ```
 
 服务端口：
 
 ```bash
-export VOICE_APP_AUTH_SERVICE_PORT=8004
+export AUTH_SERVICE_PORT=8004
 ```
 
 ## 启动服务

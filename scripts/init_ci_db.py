@@ -25,19 +25,19 @@ def _connect_admin() -> psycopg.Connection:
 
 def _connect_target() -> psycopg.Connection:
     return psycopg.connect(
-        host=_env("VOICE_APP_POSTGRES_HOST", "127.0.0.1"),
-        port=int(_env("VOICE_APP_POSTGRES_PORT", "5432")),
-        user=_env("VOICE_APP_POSTGRES_USER", "yibao_user"),
-        password=_env("VOICE_APP_POSTGRES_PASSWORD", "123456"),
-        dbname=_env("VOICE_APP_POSTGRES_DB", "yibao_auth"),
+        host=_env("POSTGRES_HOST", "127.0.0.1"),
+        port=int(_env("POSTGRES_PORT", "5432")),
+        user=_env("POSTGRES_USER", "yibao_user"),
+        password=_env("POSTGRES_PASSWORD", "123456"),
+        dbname=_env("POSTGRES_DB", "yibao_auth"),
         autocommit=True,
     )
 
 
 def _ensure_role_and_db() -> None:
-    role_name = _env("VOICE_APP_POSTGRES_USER", "yibao_user")
-    role_password = _env("VOICE_APP_POSTGRES_PASSWORD", "123456")
-    db_name = _env("VOICE_APP_POSTGRES_DB", "yibao_auth")
+    role_name = _env("POSTGRES_USER", "yibao_user")
+    role_password = _env("POSTGRES_PASSWORD", "123456")
+    db_name = _env("POSTGRES_DB", "yibao_auth")
 
     try:
         with _connect_admin() as conn:
@@ -130,7 +130,7 @@ def _run_psql_fallback(role_name: str, role_password: str, db_name: str) -> None
 
 
 def _apply_schema() -> None:
-    role_name = _env("VOICE_APP_POSTGRES_USER", "yibao_user")
+    role_name = _env("POSTGRES_USER", "yibao_user")
     schema_path = Path(__file__).resolve().parents[1] / "database" / "auth_postgres.sql"
     schema_sql = schema_path.read_text(encoding="utf-8")
 

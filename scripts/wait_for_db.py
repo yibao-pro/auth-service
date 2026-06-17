@@ -12,11 +12,11 @@ def main() -> None:
         connect_kwargs = {"conninfo": database_url}
     else:
         connect_kwargs = {
-            "host": os.getenv("VOICE_APP_POSTGRES_HOST", os.getenv("POSTGRES_HOST", "postgres")),
-            "port": int(os.getenv("VOICE_APP_POSTGRES_PORT", os.getenv("POSTGRES_PORT", "5432"))),
-            "user": os.getenv("VOICE_APP_POSTGRES_USER", os.getenv("POSTGRES_USER", "yibao_user")),
-            "password": os.getenv("VOICE_APP_POSTGRES_PASSWORD", os.getenv("POSTGRES_PASSWORD", "123456")),
-            "dbname": os.getenv("VOICE_APP_POSTGRES_DB", os.getenv("POSTGRES_DB", "yibao_auth")),
+            "host": os.getenv("POSTGRES_HOST", "postgres"),
+            "port": int(os.getenv("POSTGRES_PORT", "5432")),
+            "user": os.getenv("POSTGRES_USER", "yibao_user"),
+            "password": os.getenv("POSTGRES_PASSWORD", "123456"),
+            "dbname": os.getenv("POSTGRES_DB", "yibao_auth"),
         }
 
     deadline = time.time() + int(os.getenv("DB_WAIT_TIMEOUT_SECONDS", "60"))
