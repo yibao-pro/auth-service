@@ -8,7 +8,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_REPOSITORY: 2019598399/auth-service
+  IMAGE_REPOSITORY: yibao-pro/auth-service
   IMAGE_TAG: latest
 
 jobs:
