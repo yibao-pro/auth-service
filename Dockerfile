@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM crpi-cov44u3tj8fodq9j.cn-hangzhou.personal.cr.aliyuncs.com/yibao-pro/python:3.10-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
