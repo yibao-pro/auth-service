@@ -116,7 +116,7 @@ docker pull ghcr.io/yibao-pro/auth-service:latest
 
 当前流程：
 - `docker-image`：构建并推送 `ghcr.io/yibao-pro/auth-service:latest`
-- `deploy`：SSH 到目标服务器，拉取最新镜像，先启动 candidate 容器做健康检查，再替换正式容器
+- `deploy`：GitHub runner 先把镜像打包成 artifact，再通过 SCP 传到目标服务器，服务器 `docker load` 后先启动 candidate 容器做健康检查，再替换正式容器
 
 部署所需 GitHub Secrets：
 - `SERVER_HOST`
@@ -250,8 +250,10 @@ docker run -d \
 
 - 机器能被 GitHub Actions 通过 SSH 登录
 - 机器本地存在 `/data/yibao-agent-platform/auth-service/.env`
-- 机器本地 `127.0.0.1:7890` 有可用代理
 - 机器已安装 Docker
+
+当前 workflow 不再依赖服务器直接访问 `ghcr.io`，也不要求服务器本地必须有 `127.0.0.1:7890` 代理。
+镜像会先在 GitHub runner 上构建并推送，然后 runner 再把同一镜像打包传到服务器，服务器只负责 `docker load` 和容器切换。
 
 仓库中需要配置这些 GitHub Secrets：
 
@@ -261,7 +263,7 @@ docker run -d \
 
 工作流会在服务器上执行这些动作：
 
-- 拉取 `ghcr.io/yibao-pro/auth-service:latest`
+- 接收 GitHub runner 传来的镜像包并执行 `docker load`
 - 启动 `yibao-auth-service-candidate`
 - 请求 `http://127.0.0.1:18030/healthz`
 - 通过后替换正式容器 `yibao-auth-service`
@@ -276,9 +278,9 @@ docker run -d \
 - 检查 `DATABASE_URL` 是否使用了 `host.docker.internal`
 - 检查 `docker run` 是否带了 `--add-host host.docker.internal:host-gateway`
 
-部署时 `docker pull` 很慢：
-- 确认服务器本机 `127.0.0.1:7890` 代理可用
-- 当前 GitHub Actions deploy 已经带 `http_proxy/https_proxy`
+部署时如果镜像同步失败：
+- 先看 workflow 里的 `Upload image artifact`、`Copy image archive to server`、`docker load` 哪一步失败
+- 当前 deploy 已经不依赖服务器本机直接 `docker pull ghcr.io`
 
 ## 接口
 

@@ -40,12 +40,41 @@ jobs:
           push: true
           platforms: linux/amd64
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          cache-from: type=gha,scope=auth-service
+          cache-to: type=gha,scope=auth-service,mode=max
+
+      - name: Pull published image to runner
+        run: docker pull "${{ env.REGISTRY }}/${{ env.IMAGE_REPOSITORY }}:${{ env.IMAGE_TAG }}"
+
+      - name: Save image archive
+        run: docker save "${{ env.REGISTRY }}/${{ env.IMAGE_REPOSITORY }}:${{ env.IMAGE_TAG }}" | gzip > auth-service-image.tar.gz
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: auth-service-image
+          path: auth-service-image.tar.gz
+          if-no-files-found: error
 
   deploy:
     needs: docker-image
     runs-on: ubuntu-latest
 
     steps:
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: auth-service-image
+
+      - name: Copy image archive to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: auth-service-image.tar.gz
+          target: /tmp
+
       - name: Deploy auth-service to server
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -57,18 +86,12 @@ jobs:
           script: |
             set -e
 
-            export http_proxy=http://127.0.0.1:7890
-            export https_proxy=http://127.0.0.1:7890
-            export HTTP_PROXY=$http_proxy
-            export HTTPS_PROXY=$https_proxy
-            export no_proxy=127.0.0.1,localhost
-            export NO_PROXY=$no_proxy
-
             DEPLOY_DIR=/data/yibao-agent-platform/auth-service
             IMAGE=ghcr.io/yibao-pro/auth-service:latest
             PROD_NAME=yibao-auth-service
             TEST_NAME=yibao-auth-service-candidate
             ENV_FILE=${DEPLOY_DIR}/.env
+            IMAGE_ARCHIVE=/tmp/auth-service-image.tar.gz
 
             mkdir -p "${DEPLOY_DIR}"
             cd "${DEPLOY_DIR}"
@@ -78,16 +101,23 @@ jobs:
               exit 1
             fi
 
-            echo "Pull latest image..."
-            docker pull "${IMAGE}"
+            if [ ! -f "${IMAGE_ARCHIVE}" ]; then
+              echo "Missing image archive: ${IMAGE_ARCHIVE}"
+              exit 1
+            fi
+
+            echo "Load image archive..."
+            gunzip -c "${IMAGE_ARCHIVE}" | docker load
+            rm -f "${IMAGE_ARCHIVE}"
 
             echo "Remove old candidate container..."
-            docker stop "${TEST_NAME}" || true
-            docker rm "${TEST_NAME}" || true
+            docker stop "${TEST_NAME}" >/dev/null 2>&1 || true
+            docker rm "${TEST_NAME}" >/dev/null 2>&1 || true
 
             echo "Start candidate container..."
             docker run -d \
               --name "${TEST_NAME}" \
+              --restart unless-stopped \
               --add-host host.docker.internal:host-gateway \
               --env-file "${ENV_FILE}" \
               -e INIT_DB_ON_START=false \
@@ -95,11 +125,25 @@ jobs:
               -p 18030:8030 \
               "${IMAGE}"
 
-            echo "Wait for service..."
-            sleep 5
+            echo "Wait for service health..."
+            passed=false
+            for i in $(seq 1 24); do
+              if curl --noproxy '*' -fsS http://127.0.0.1:18030/healthz >/dev/null; then
+                passed=true
+                break
+              fi
+              sleep 5
+            done
 
-            echo "Health check..."
-            curl --noproxy '*' -f http://127.0.0.1:18030/healthz
+            if [ "${passed}" != "true" ]; then
+              echo "Candidate health check failed. Container status:"
+              docker ps -a --filter "name=${TEST_NAME}"
+              echo "Candidate logs:"
+              docker logs "${TEST_NAME}" || true
+              exit 1
+            fi
+
+            echo "Candidate health check passed."
 
             echo "Candidate passed. Replace production container..."
             docker stop "${TEST_NAME}"
@@ -107,6 +151,20 @@ jobs:
 
             docker stop "${PROD_NAME}" || true
             docker rm "${PROD_NAME}" || true
+
+            echo "Release port 8030 if it is held by another Docker container..."
+            OLD_CONTAINERS="$(docker ps -aq --filter publish=8030)"
+            if [ -n "${OLD_CONTAINERS}" ]; then
+              echo "${OLD_CONTAINERS}" | xargs -r docker stop
+              echo "${OLD_CONTAINERS}" | xargs -r docker rm
+            fi
+
+            if sudo ss -ltn '( sport = :8030 )' | grep -q ':8030'; then
+              echo "Port 8030 is still occupied by a non-Docker listener:"
+              sudo ss -ltnp '( sport = :8030 )' || true
+              sudo lsof -iTCP:8030 -sTCP:LISTEN -n -P || true
+              exit 1
+            fi
 
             docker run -d \
               --name "${PROD_NAME}" \
@@ -118,8 +176,22 @@ jobs:
               -p 8030:8030 \
               "${IMAGE}"
 
-            echo "Check production..."
-            sleep 5
-            curl --noproxy '*' -f http://127.0.0.1:8030/healthz
+            echo "Check production health..."
+            passed=false
+            for i in $(seq 1 24); do
+              if curl --noproxy '*' -fsS http://127.0.0.1:8030/healthz >/dev/null; then
+                passed=true
+                break
+              fi
+              sleep 5
+            done
+
+            if [ "${passed}" != "true" ]; then
+              echo "Production health check failed. Container status:"
+              docker ps -a --filter "name=${PROD_NAME}"
+              echo "Production logs:"
+              docker logs "${PROD_NAME}" || true
+              exit 1
+            fi
 
             echo "Deploy success."
