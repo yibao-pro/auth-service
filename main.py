@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from api.app import app
+from src.settings import settings
 
 
 def main() -> None:
     print("auth-service build smoke check passed")
-    print(f"title={app.title}")
-    print(f"version={app.version}")
+    print("transport=grpc")
+    print(f"port={settings.auth_service_port}")
 
 
 if __name__ == "__main__":

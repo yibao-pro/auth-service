@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Callable, Optional
 from uuid import uuid4
-
-from fastapi import Request
 
 
 def configure_logging(level: int = logging.INFO) -> None:
@@ -14,9 +12,12 @@ def configure_logging(level: int = logging.INFO) -> None:
     )
 
 
-def generate_request_id(request: Optional[Request] = None) -> str:
-    if request:
-        candidate = request.headers.get("x-request-id") or request.headers.get("X-Request-Id")
+logger = logging.getLogger("auth-service")
+
+
+def generate_request_id(header_getter: Optional[Callable[[str], str | None]] = None) -> str:
+    if header_getter:
+        candidate = header_getter("x-request-id") or header_getter("X-Request-Id")
         if candidate:
             return candidate
     return uuid4().hex

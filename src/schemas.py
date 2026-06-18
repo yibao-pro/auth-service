@@ -31,3 +31,7 @@ class MeResponse(BaseModel):
     request_id: str
     user_id: str
     username: str
+
+
+class TokenRequest(BaseModel):
+    token: constr(strip_whitespace=True, min_length=1) = Field(..., description="Bearer token")

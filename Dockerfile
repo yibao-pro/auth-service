@@ -12,6 +12,7 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
 COPY api ./api
+COPY proto ./proto
 COPY src ./src
 COPY scripts ./scripts
 COPY database ./database

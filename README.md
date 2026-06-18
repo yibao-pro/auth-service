@@ -1,6 +1,6 @@
 # Auth Service
 
-一个独立部署的认证服务，基于 `FastAPI + PostgreSQL + JWT` 实现。
+一个独立部署的认证服务，基于 `gRPC + PostgreSQL + JWT` 实现。
 
 ## 目录结构
 
@@ -24,7 +24,7 @@ auth-service/
 
 - 用户注册
 - 用户登录并签发 JWT
-- 基于 Bearer Token 获取当前用户
+- 基于 Token 获取当前用户
 - 独立 PostgreSQL 库连接
 - Docker 镜像构建与 GitHub Actions 自动部署
 
@@ -72,12 +72,6 @@ pip install -r requirements.txt
 
 ```bash
 ./scripts/start_auth_service.sh
-```
-
-或：
-
-```bash
-uvicorn api.app:app --host 0.0.0.0 --port 8004
 ```
 
 ## Docker
@@ -207,16 +201,13 @@ docker run -d \
 ### 6. 健康检查
 
 ```bash
-curl --noproxy '*' http://127.0.0.1:8030/healthz
+python scripts/grpc_health_probe.py 127.0.0.1:8030 auth.v1.AuthService
 ```
 
-期望返回：
+期望输出：
 
-```json
-{
-  "status": "success",
-  "service": "auth-service"
-}
+```text
+SERVING
 ```
 
 ### 7. 查看日志
@@ -225,7 +216,21 @@ curl --noproxy '*' http://127.0.0.1:8030/healthz
 docker logs yibao-auth-service --tail 100
 ```
 
-### 8. 更新镜像
+### 8. 调用服务
+
+可以用 Python gRPC 客户端直接请求，例如：
+
+```python
+import grpc
+from src.generated import auth_pb2, auth_pb2_grpc
+
+with grpc.insecure_channel("127.0.0.1:8030") as channel:
+    stub = auth_pb2_grpc.AuthServiceStub(channel)
+    response = stub.Login(auth_pb2.LoginRequest(username="alice", password="secret123"))
+    print(response)
+```
+
+### 9. 更新镜像
 
 后续手动更新可以直接执行：
 
@@ -244,7 +249,7 @@ docker run -d \
   ghcr.io/yibao-pro/auth-service:latest
 ```
 
-### 9. 接入 GitHub Actions 自动部署
+### 10. 接入 GitHub Actions 自动部署
 
 如果要让仓库里的 GitHub Actions 接管部署，目标机器需要满足这些条件：
 
@@ -265,12 +270,12 @@ docker run -d \
 
 - 接收 GitHub runner 传来的镜像包并执行 `docker load`
 - 启动 `yibao-auth-service-candidate`
-- 请求 `http://127.0.0.1:18030/healthz`
+- 在容器内执行 gRPC health probe
 - 通过后替换正式容器 `yibao-auth-service`
 
-### 10. 常见问题
+### 11. 常见问题
 
-`curl /healthz` 失败：
+gRPC 健康检查失败：
 - 先看 `docker logs yibao-auth-service`
 - 再确认 `.env` 里的数据库地址是否可达
 
@@ -284,10 +289,10 @@ docker run -d \
 
 ## 接口
 
-- `GET /healthz`
-- `POST /auth/register`
-- `POST /auth/login`
-- `GET /auth/me`
+- `Healthz`
+- `Register`
+- `Login`
+- `Me`
 
 详细接口文档见：
 - [docs/api.md](./docs/api.md)

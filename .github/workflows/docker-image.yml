@@ -128,7 +128,7 @@ jobs:
             echo "Wait for service health..."
             passed=false
             for i in $(seq 1 24); do
-              if curl --noproxy '*' -fsS http://127.0.0.1:18030/healthz >/dev/null; then
+              if docker exec "${TEST_NAME}" python scripts/grpc_health_probe.py 127.0.0.1:8030 auth.v1.AuthService >/dev/null 2>&1; then
                 passed=true
                 break
               fi
@@ -179,7 +179,7 @@ jobs:
             echo "Check production health..."
             passed=false
             for i in $(seq 1 24); do
-              if curl --noproxy '*' -fsS http://127.0.0.1:8030/healthz >/dev/null; then
+              if docker exec "${PROD_NAME}" python scripts/grpc_health_probe.py 127.0.0.1:8030 auth.v1.AuthService >/dev/null 2>&1; then
                 passed=true
                 break
               fi

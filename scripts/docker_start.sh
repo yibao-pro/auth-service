@@ -13,4 +13,4 @@ if [[ "${INIT_DB_ON_START:-true}" == "true" ]]; then
   python scripts/init_db.py
 fi
 
-exec python -m uvicorn api.app:app --host "${AUTH_SERVICE_HOST:-0.0.0.0}" --port "${AUTH_SERVICE_PORT:-8004}"
+exec python -m api.grpc_server

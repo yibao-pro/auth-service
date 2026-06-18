@@ -1,1 +1,1 @@
-"""Manual API smoke test placeholder for auth-service."""
+"""Manual gRPC smoke test placeholder for auth-service."""
